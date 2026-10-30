@@ -1,0 +1,19 @@
+<main class="login-layout">
+    <section class="login-story">
+      <a class="brand" href="#" aria-label="Ntsumele Bank home"><span class="brand-mark">N</span><span>Ntsumele<span class="brand-bank">BANK</span></span></a>
+      <div class="story-copy"><span class="eyebrow light">BANKING WITH YOU IN MIND</span><h1>Your money.<br>Your peace<br>of mind.</h1><p>A clearer view of your transactions.<br>A simple way to put things right.</p></div>
+      <div class="story-card"><nb-icon name="shield"/><div><strong>Here for every transaction.</strong><p>View your activity, raise a concern, and follow your dispute from start to finish.</p></div></div>
+      <div class="story-bottom">Ntsumele Bank <span>Made for your everyday.</span></div>
+    </section>
+    <section class="login-form-panel">
+      <div class="login-form-wrap"><h2>Welcome back.</h2><p class="muted">Sign in to your banking workspace.</p>
+        @if(error()) {<div class="alert error" role="alert"><nb-icon name="info"/><span>{{error()}}</span></div>}
+        <form (ngSubmit)="submitSignIn()" #loginForm="ngForm" class="login-form">
+          <label for="username">Username</label><input id="username" name="username" [(ngModel)]="username" required maxlength="80" autocomplete="username" placeholder="Enter your username" [disabled]="busy()">
+          <label for="password">Password</label><input id="password" name="password" [(ngModel)]="password" required type="password" autocomplete="current-password" placeholder="Enter your password" [disabled]="busy()">
+          <button class="button primary full" type="submit" [disabled]="loginForm.invalid || busy()">{{busy() ? 'Signing in…' : 'Secure sign in'}}<nb-icon [name]="busy()?'clock':'arrow'"/></button>
+        </form>
+        <div class="secure-line"><nb-icon name="lock"/> Your session is protected and private.</div>
+      </div><p class="login-footer">© {{2026}} Ntsumele Bank</p>
+    </section>
+  </main>

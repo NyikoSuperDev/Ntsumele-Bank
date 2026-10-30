@@ -1,0 +1,46 @@
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "newProjectRoot": "projects",
+  "projects": {
+    "ntsumele-bank": {
+      "projectType": "application",
+      "root": "",
+      "sourceRoot": "src",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "outputPath": "dist/ntsumele-bank",
+            "index": "src/index.html",
+            "browser": "src/main.ts",
+            "tsConfig": "tsconfig.app.json",
+            "styles": ["src/styles.css"]
+          },
+          "configurations": {
+            "production": {
+              "optimization": {"scripts":true,"styles":{"minify":true,"inlineCritical":false},"fonts":false},
+              "budgets": [{"type":"initial","maximumWarning":"700kB","maximumError":"1MB"}],
+              "outputHashing": "all"
+            },
+            "development": {"optimization":false,"extractLicenses":false,"sourceMap":true}
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder":"@angular/build:dev-server",
+          "configurations": {
+            "production":{"buildTarget":"ntsumele-bank:build:production"},
+            "development":{"buildTarget":"ntsumele-bank:build:development"}
+          },
+          "defaultConfiguration":"development"
+        },
+        "test": {
+          "builder":"@angular/build:unit-test",
+          "options":{"tsConfig":"tsconfig.spec.json","runner":"vitest","buildTarget":"ntsumele-bank:build:development"}
+        }
+      }
+    }
+  },
+  "cli":{"analytics":false}
+}

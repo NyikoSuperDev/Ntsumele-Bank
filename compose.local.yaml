@@ -1,0 +1,5 @@
+# Opt in when running Java or integration tests on the host machine.
+services:
+  database:
+    ports:
+      - "127.0.0.1:5432:5432"

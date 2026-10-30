@@ -1,0 +1,80 @@
+<section class="panel transactions-panel" aria-labelledby="activity-title">
+  <div class="activity-header">
+    <div><h2 id="activity-title">Account activity</h2><p>All the details, at a glance.</p></div>
+    <div class="account-control">
+      <span class="summary-icon small primary-tone"><nb-icon name="wallet"/></span>
+      <div>
+        <label for="account-select">Viewing account</label>
+        <select id="account-select" name="account" [(ngModel)]="accountId" (ngModelChange)="loadTransactions()" [disabled]="loading()">
+          @for(a of accounts();track a.id){<option [value]="a.id">{{a.name}} · {{a.maskedNumber}}</option>}
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="balance-strip">
+    <div><span class="balance-label">Available balance</span><strong>{{money(account?.balance??0,account?.currency??'ZAR')}}</strong></div>
+    <span><nb-icon name="shield"/>Account access verified</span>
+  </div>
+  <form class="table-toolbar" (ngSubmit)="loadTransactions()">
+    <div class="search-field">
+      <nb-icon name="search"/>
+      <input aria-label="Search transactions" name="search" [(ngModel)]="search" maxlength="100" placeholder="Search merchant or reference">
+      <button type="submit" class="search-submit" [disabled]="loading()">Search</button>
+    </div>
+    <div class="transaction-filters">
+      <div class="filter-field">
+        <label for="transaction-status">Payment status</label>
+        <select id="transaction-status" name="transactionStatus" [(ngModel)]="transactionStatus" (ngModelChange)="loadTransactions()" [disabled]="loading()">
+          <option value="">All payment statuses</option><option value="BOOKED">Completed</option><option value="PENDING">Pending</option><option value="REVERSED">Reversed</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label for="transaction-dispute-status">Dispute status</label>
+        <select id="transaction-dispute-status" name="disputeStatus" [(ngModel)]="disputeStatus" (ngModelChange)="loadTransactions()" [disabled]="loading()">
+          <option value="">All dispute statuses</option><option value="NOT_DISPUTED">Not disputed</option><option value="DISPUTED">Disputed</option><option value="DISPUTE_RESOLVED">Dispute resolved</option>
+        </select>
+      </div>
+    </div>
+  </form>
+  <div class="table-scroll" [attr.aria-busy]="loading()" tabindex="0" role="region" aria-label="Account transactions with payment and dispute statuses">
+    <table>
+      <thead><tr><th scope="col">TRANSACTION</th><th scope="col">DATE</th><th scope="col">PAYMENT STATUS</th><th scope="col">DISPUTE STATUS</th><th scope="col" class="amount-cell">AMOUNT</th><th scope="col" class="action-cell"><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>
+        @for(tx of transactions().content;track tx.id){
+          <tr>
+            <td><div class="merchant-cell"><span class="merchant-mark" [class.credit-mark]="tx.amount>0">{{merchantInitials(tx.merchant)}}</span><div><strong>{{tx.merchant}}</strong><span>{{tx.category}}<span class="dot-separator">·</span>{{tx.reference}}</span></div></div></td>
+            <td class="date-cell">{{tx.bookedAt | date:'dd MMM yyyy':'+0200'}}<span>{{tx.bookedAt | date:'HH:mm':'+0200'}} SAST</span></td>
+            <td><span class="badge payment-status-badge" [attr.data-status]="tx.status"><span class="badge-dot"></span>{{label(tx.status)}}</span></td>
+            <td><span class="badge transaction-dispute-badge" [attr.data-dispute-status]="tx.disputeStatus"><span class="badge-dot"></span>{{disputeLabel(tx.disputeStatus)}}</span></td>
+            <td class="amount-cell" [class.positive]="tx.amount>0">{{tx.amount>0?'+':''}}{{money(tx.amount,tx.currency)}}</td>
+            <td class="action-cell">
+              <div class="transaction-row-actions">
+                @if(tx.activeDisputeId){
+                  <button class="transaction-action case-action" [attr.aria-label]="'View dispute for '+tx.merchant" (click)="caseSelected.emit(tx.activeDisputeId)">View dispute<nb-icon name="chevron"/></button>
+                }@else{
+                  @if(tx.latestDisputeId){<button class="transaction-action case-action" [attr.aria-label]="'View dispute history for '+tx.merchant" (click)="caseSelected.emit(tx.latestDisputeId)">View history<nb-icon name="chevron"/></button>}
+                  @if(tx.disputable){
+                    <button class="transaction-action" [attr.aria-label]="(tx.latestDisputeId?'Dispute again: ':'Dispute ')+tx.merchant" (click)="disputeRequested.emit(tx)">{{tx.latestDisputeId?'Dispute again':'Dispute'}}<nb-icon name="chevron"/></button>
+                  }@else{
+                    <span class="not-eligible" [title]="tx.status==='PENDING'?'Available once the payment is completed':(tx.status==='REVERSED'?'This payment was reversed':(tx.amount>0?'Credits cannot be disputed here':'This debit is currently ineligible. Eligibility depends on settlement, reversals, and current ledger information.'))">{{tx.status==='PENDING'?'Awaiting settlement':(tx.status==='REVERSED'?'Payment reversed':(tx.amount>0?'Money received':'Not eligible'))}}</span>
+                  }
+                }
+              </div>
+            </td>
+          </tr>
+        }@empty{
+          <tr><td colspan="6"><div class="empty-state"><nb-icon [name]="loading()?'clock':'search'"/><h3>{{loading()?'Loading your transactions…':'No transactions found'}}</h3><p>{{loading()?'Your account activity is on its way.':'Try another account, search term, or status filter.'}}</p></div></td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <div class="table-footer">
+    <span>{{transactions().totalElements?'Showing '+(transactions().number*transactions().size+1)+'–'+(transactions().number*transactions().size+transactions().content.length)+' of '+transactions().totalElements+' transactions':'0 transactions'}}</span>
+    <div class="pagination"><button aria-label="Previous page" [disabled]="loading()||transactions().number===0" (click)="loadTransactions(transactions().number-1)">Previous</button><span>{{transactions().totalPages?'Page '+(transactions().number+1)+' of '+transactions().totalPages:'Page 1 of 1'}}</span><button aria-label="Next page" [disabled]="loading()||transactions().number+1>=transactions().totalPages" (click)="loadTransactions(transactions().number+1)">Next<nb-icon name="chevron"/></button></div>
+  </div>
+</section>
+<div class="under-table">
+  <nb-icon name="info"/>
+  <p>Payment status and dispute status are separate. “Not disputed” means no case has been submitted. Resolved cases stay in your history; resolving a case does not itself issue a refund.</p>
+  <button class="text-button" (click)="helpRequested.emit()">How it works<nb-icon name="arrow"/></button>
+</div>

@@ -1,0 +1,4 @@
+import { describe, it, expect } from 'vitest';
+import { disputeLabel, nextDisputeStatuses } from './dispute-display';
+import { transactionStatusLabel } from '../transaction/transaction-display';
+describe('Banking action presentation', () => { it('keeps resolved cases terminal and offers permitted staff actions', () => { expect(nextDisputeStatuses('SUBMITTED')).toEqual(['UNDER_REVIEW']); expect(nextDisputeStatuses('UNDER_REVIEW')).toEqual(['AWAITING_INFORMATION', 'RESOLVED']); expect(nextDisputeStatuses('AWAITING_INFORMATION')).toEqual(['UNDER_REVIEW', 'RESOLVED']); expect(nextDisputeStatuses('RESOLVED')).toEqual([]); }); it('uses readable transaction and dispute labels', () => { expect(disputeLabel('AWAITING_INFORMATION')).toBe('Awaiting information'); expect(disputeLabel(null)).toBe('—'); expect(transactionStatusLabel('BOOKED')).toBe('Completed'); }); });

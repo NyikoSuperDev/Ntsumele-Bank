@@ -1,0 +1,38 @@
+<section class="panel" [attr.aria-busy]="loading()">
+  <div class="history-heading">
+    <div><h2>{{isStaff?'Customer dispute cases':'Your dispute cases'}}</h2><p>Original transactions and a complete record of every case.</p></div>
+    <div class="segmented" role="group" aria-label="Filter disputes">
+      <button [class.selected]="historyFilter==='all'" [attr.aria-pressed]="historyFilter==='all'" [disabled]="loading()" (click)="selectFilter('all')">All cases</button>
+      <button [class.selected]="historyFilter==='active'" [attr.aria-pressed]="historyFilter==='active'" [disabled]="loading()" (click)="selectFilter('active')">Active</button>
+      <button [class.selected]="historyFilter==='awaiting'" [attr.aria-pressed]="historyFilter==='awaiting'" [disabled]="loading()" (click)="selectFilter('awaiting')">Awaiting info</button>
+      <button [class.selected]="historyFilter==='resolved'" [attr.aria-pressed]="historyFilter==='resolved'" [disabled]="loading()" (click)="selectFilter('resolved')">Resolved</button>
+    </div>
+  </div>
+  @for(d of page().content;track d.id){
+    <button class="dispute-row" (click)="caseSelected.emit(d.id)">
+      <span class="merchant-mark large">{{merchantInitials(d.transaction.merchant)}}</span>
+      <div class="dispute-row-main">
+        <div class="dispute-title"><strong>{{d.transaction.merchant}}</strong><span class="badge" [attr.data-status]="d.status">{{label(d.status)}}</span></div>
+        <p>{{label(d.reason)}}</p>
+        <div class="case-meta"><span>{{d.caseReference}}</span><span>Submitted {{d.createdAt|date:'dd MMM yyyy':'+0200'}}</span><span>{{d.historyCount}} {{d.historyCount===1?'update':'updates'}}</span></div>
+      </div>
+      <div class="dispute-amount"><strong>{{money(d.transaction.amount,d.transaction.currency)}}</strong><span>Original transaction</span></div><nb-icon name="chevron"/>
+    </button>
+  }@empty{
+    <div class="empty-state roomy">
+      <nb-icon [name]="loading()?'clock':'shield'"/>
+      <h3>{{loading()?'Loading your cases…':'No disputes to show'}}</h3>
+      <p>{{historyFilter==='all'?'When you raise a dispute, you can follow its progress here.':'Choose All cases to browse your full dispute history.'}}</p>
+      @if(!isStaff){<button class="button secondary" (click)="viewTransactions.emit()">View transactions<nb-icon name="arrow"/></button>}
+    </div>
+  }
+  <div class="table-footer">
+    <span aria-live="polite">{{page().totalElements?'Showing '+(page().number*page().size+1)+'–'+(page().number*page().size+page().content.length)+' of '+page().totalElements+' cases':'0 cases'}}</span>
+    <div class="pagination" aria-label="Dispute pages">
+      <button aria-label="Previous dispute page" [disabled]="loading()||page().number===0" (click)="pageChanged.emit(page().number-1)">Previous</button>
+      <span>Page {{page().number+1}} of {{page().totalPages||1}}</span>
+      <button aria-label="Next dispute page" [disabled]="loading()||page().number+1>=page().totalPages" (click)="pageChanged.emit(page().number+1)">Next<nb-icon name="chevron"/></button>
+    </div>
+  </div>
+</section>
+<div class="history-reassurance"><nb-icon name="lock"/><p>Closed cases stay in your history. Raising a dispute never changes the original transaction.</p></div>

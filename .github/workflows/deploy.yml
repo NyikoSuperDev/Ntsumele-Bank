@@ -1,0 +1,57 @@
+name: Deploy verified image
+on:
+  workflow_dispatch:
+    inputs:
+      image_digest:
+        description: 'Previously signed image digest, sha256: followed by 64 hex characters'
+        required: true
+        type: string
+      release_ref:
+        description: 'Signing release ref, e.g. refs/tags/v1.0.0 or refs/heads/main'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: vars.DEPLOY_ENABLED == 'true' && github.ref == 'refs/heads/main'
+    environment: production
+    runs-on: [self-hosted, linux, x64, ntsumele-production]
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+      attestations: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Authenticate registry without persisting a login
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          config="$(mktemp -d)"
+          echo "DOCKER_CONFIG=$config" >> "$GITHUB_ENV"
+          printf '%s' "$REGISTRY_TOKEN" | docker --config "$config" login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+      - name: Verify signature, SBOM and provenance, then roll out immutable image
+        env:
+          IMAGE_DIGEST: ${{ inputs.image_digest }}
+          RELEASE_REF: ${{ inputs.release_ref }}
+          NTSUMELE_ENV_FILE: ${{ vars.NTSUMELE_ENV_FILE }}
+          NTSUMELE_DB_CA_FILE: ${{ vars.NTSUMELE_DB_CA_FILE }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/release/deploy.sh
+      - name: Remove temporary registry credentials
+        if: always()
+        shell: bash
+        run: |
+          if [[ -n "${DOCKER_CONFIG:-}" && "$DOCKER_CONFIG" == /tmp/* && -d "$DOCKER_CONFIG" ]]; then
+            docker --config "$DOCKER_CONFIG" logout ghcr.io
+            rm -f -- "$DOCKER_CONFIG/config.json"
+            rmdir -- "$DOCKER_CONFIG"
+          fi

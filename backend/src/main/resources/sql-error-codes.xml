@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A classpath-root file enables Spring's database-specific exception translator.
+  This PostgreSQL bean preserves ALL vendor mappings from Spring JDBC 6.2.19:
+  https://github.com/spring-projects/spring-framework/blob/v6.2.19/spring-jdbc/src/main/resources/org/springframework/jdbc/support/sql-error-codes.xml
+  The sole addition maps PostgreSQL query cancellation (57014), including our
+  statement_timeout, to QueryTimeoutException. Native lock_timeout (55P03) keeps
+  its CannotAcquireLockException mapping. Both reach the sanitized HTTP 503 path.
+  Compare this complete vendor definition with Spring's when upgrading JDBC.
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans https://www.springframework.org/schema/beans/spring-beans.xsd">
+  <bean id="PostgreSQL" name="Postgres" class="org.springframework.jdbc.support.SQLErrorCodes">
+    <property name="useSqlStateForTranslation" value="true"/>
+    <property name="badSqlGrammarCodes" value="03000,42000,42601,42602,42622,42804,42P01"/>
+    <property name="duplicateKeyCodes" value="21000,23505"/>
+    <property name="dataIntegrityViolationCodes" value="23000,23502,23503,23514"/>
+    <property name="dataAccessResourceFailureCodes" value="53000,53100,53200,53300"/>
+    <property name="cannotAcquireLockCodes" value="55P03"/>
+    <property name="cannotSerializeTransactionCodes" value="40001"/>
+    <property name="deadlockLoserCodes" value="40P01"/>
+    <property name="customTranslations">
+      <list>
+        <bean class="org.springframework.jdbc.support.CustomSQLErrorCodesTranslation">
+          <property name="errorCodes" value="57014"/>
+          <property name="exceptionClass" value="org.springframework.dao.QueryTimeoutException"/>
+        </bean>
+      </list>
+    </property>
+  </bean>
+</beans>

@@ -1,0 +1,214 @@
+name: Verify and scan
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+    secrets:
+      NVD_API_KEY:
+        required: false
+  schedule:
+    - cron: '31 3 * * 1'
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b
+        env:
+          POSTGRES_DB: ntsumele_test
+          POSTGRES_USER: ntsumele_test
+          POSTGRES_PASSWORD: ci-postgres-test-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ntsumele_test -d ntsumele_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      TEST_DATABASE_URL: jdbc:postgresql://localhost:5432/ntsumele_test?sslmode=disable
+      TEST_DATABASE_USERNAME: ntsumele_test
+      TEST_DATABASE_PASSWORD: ci-postgres-test-password
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Validate supply-chain pins and deployment policy
+        run: |
+          python3 scripts/release/validate-policy.py
+          python3 -m unittest discover -s scripts/release/tests
+          bash scripts/release/lint-workflows.sh
+      - run: npm ci --no-audit --no-fund
+        working-directory: frontend
+      - run: npm test && npm run build
+        working-directory: frontend
+      - name: Verify application against PostgreSQL and generate Java SBOM
+        run: sh ./mvnw -B -ntp -f backend/pom.xml -Ppostgres-integration,sbom verify
+      - name: Enable ephemeral PostgreSQL test TLS
+        run: sh scripts/ci/enable-postgres-tls.sh '${{ job.services.postgres.id }}'
+      - name: Verify database encryption, CA and hostname checks
+        run: sh ./mvnw -B -ntp -f backend/pom.xml -Ppostgres-tls verify
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: verification-and-java-sbom
+          path: |
+            backend/target/surefire-reports/
+            backend/target/failsafe-reports/
+            backend/target/bom.json
+          retention-days: 30
+  dependency-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - run: npm ci --no-audit --no-fund
+        working-directory: frontend
+      - name: Audit all npm dependencies, including build tooling
+        run: npm audit --audit-level=high --json > npm-audit.json
+        working-directory: frontend
+      - name: OWASP Dependency-Check, fail on CVSS 7+ and analysis errors
+        if: '!cancelled()'
+        run: sh ./mvnw -B -ntp -f backend/pom.xml -Psecurity -DskipTests verify
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dependency-audit-reports
+          path: |
+            frontend/npm-audit.json
+            backend/target/dependency-check-report.*
+          retention-days: 30
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [java-kotlin, javascript-typescript]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        if: matrix.language == 'java-kotlin'
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.language == 'java-kotlin' && 'manual' || 'none' }}
+          queries: security-extended
+      - if: matrix.language == 'java-kotlin'
+        run: sh ./mvnw -B -ntp -f backend/pom.xml -DskipTests package
+      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+        with:
+          category: /language:${{ matrix.language }}
+          output: codeql-results
+      - name: Block HIGH and CRITICAL CodeQL security findings
+        run: python3 scripts/release/check-codeql.py codeql-results
+  image:
+    needs: [verify, dependency-audit, codeql]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          load: true
+          tags: ntsumele-bank:verify
+          provenance: false
+      - name: Scan the application image, including unfixed HIGH/CRITICAL findings
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.76.1
+          image-ref: ntsumele-bank:verify
+          format: sarif
+          output: trivy-image.sarif
+          severity: HIGH,CRITICAL
+          limit-severities-for-sarif: true
+          scanners: vuln,secret
+          ignore-unfixed: false
+          exit-code: '1'
+      - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+        if: always()
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-container
+      - name: Inventory runtime OS and Java packages
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          image: ntsumele-bank:verify
+          syft-version: v1.55.0
+          format: cyclonedx-json
+          output-file: image.cdx.json
+          upload-artifact: false
+          upload-release-assets: false
+      - name: Inventory locked frontend dependencies
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          path: frontend
+          syft-version: v1.55.0
+          format: cyclonedx-json
+          output-file: frontend.cdx.json
+          upload-artifact: false
+          upload-release-assets: false
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: container-scan-and-sboms
+          path: |
+            trivy-image.sarif
+            image.cdx.json
+            frontend.cdx.json
+          retention-days: 30

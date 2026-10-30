@@ -1,0 +1,23 @@
+**/node_modules/
+**/target/
+**/dist/
+**/.angular/
+**/coverage/
+**/data/
+**/*.log
+.env
+.env.*
+!.env.example
+**/__pycache__/
+*.py[cod]
+*.key
+*.p12
+*.pfx
+.idea/
+.vscode/
+.DS_Store
+
+# Database backups and local secrets
+*.dump
+*.backup
+backups/

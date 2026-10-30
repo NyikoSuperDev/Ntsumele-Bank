@@ -1,0 +1,119 @@
+{
+  "verifiedOn": "2026-10-29",
+  "verification": {
+    "actions": "Official GitHub release redirects plus git ls-remote tag resolution",
+    "images": "Docker registry manifest HEAD Docker-Content-Digest header",
+    "plugins": "Maven Central publisher metadata"
+  },
+  "actions": {
+    "actions/checkout": {
+      "tag": "v7.0.1",
+      "sha": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "release": "https://github.com/actions/checkout/releases/tag/v7.0.1"
+    },
+    "actions/setup-node": {
+      "tag": "v7.1.0",
+      "sha": "949feb2413d6458794dcd2491c4babbbce0c15c1",
+      "release": "https://github.com/actions/setup-node/releases/tag/v7.1.0"
+    },
+    "actions/setup-java": {
+      "tag": "v6.1.0",
+      "sha": "b843ebf9b913146b38da2eaa7aeddf76074ae1ad",
+      "release": "https://github.com/actions/setup-java/releases/tag/v6.1.0"
+    },
+    "actions/upload-artifact": {
+      "tag": "v7.0.2",
+      "sha": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "release": "https://github.com/actions/upload-artifact/releases/tag/v7.0.2"
+    },
+    "actions/dependency-review-action": {
+      "tag": "v5.0.0",
+      "sha": "a1d282b36b6f3519aa1f3fc636f609c47dddb294",
+      "release": "https://github.com/actions/dependency-review-action/releases/tag/v5.0.0"
+    },
+    "github/codeql-action": {
+      "tag": "v4",
+      "sha": "9b3254085494b55a0f7c4c2b3d2d52cc712ce370",
+      "release": "https://github.com/github/codeql-action/releases"
+    },
+    "docker/setup-buildx-action": {
+      "tag": "v4.4.1",
+      "sha": "f87e5991a6d7451dcb8d9637bfbc97413f497069",
+      "release": "https://github.com/docker/setup-buildx-action/releases/tag/v4.4.1"
+    },
+    "docker/login-action": {
+      "tag": "v4.7.0",
+      "sha": "81c6f93d4bc991e510b342a00b419b3bb4efc5c6",
+      "release": "https://github.com/docker/login-action/releases/tag/v4.7.0"
+    },
+    "docker/build-push-action": {
+      "tag": "v7.4.0",
+      "sha": "c3c9e263c25d99ce0380d002d59b67737d91b0dc",
+      "release": "https://github.com/docker/build-push-action/releases/tag/v7.4.0"
+    },
+    "aquasecurity/trivy-action": {
+      "tag": "v0.36.0",
+      "sha": "ed142fd0673e97e23eac54620cfb913e5ce36c25",
+      "release": "https://github.com/aquasecurity/trivy-action/releases/tag/v0.36.0"
+    },
+    "sigstore/cosign-installer": {
+      "tag": "v4.1.2",
+      "sha": "6f9f17788090df1f26f669e9d70d6ae9567deba6",
+      "release": "https://github.com/sigstore/cosign-installer/releases/tag/v4.1.2"
+    },
+    "actions/attest": {
+      "tag": "v4.2.2",
+      "sha": "1e69f48acb82d1966a394da916b4c1698aa569d6",
+      "release": "https://github.com/actions/attest/releases/tag/v4.2.2"
+    },
+    "anchore/sbom-action": {
+      "tag": "v0.24.3",
+      "sha": "66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c",
+      "release": "https://github.com/anchore/sbom-action/releases/tag/v0.24.3"
+    }
+  },
+  "images": {
+    "node": {
+      "image": "library/node:24-alpine",
+      "digest": "sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85"
+    },
+    "maven": {
+      "image": "library/maven:3.9.11-eclipse-temurin-21-alpine",
+      "digest": "sha256:922927df2c662cdd47ddb116443d6bec4696cfae3de1a0ddac8fcc7b87ce61ae"
+    },
+    "java": {
+      "image": "library/eclipse-temurin:21-jre-alpine",
+      "digest": "sha256:b48e02e0ea88d7bfb305335df94923bdef394905f4147dccd52e873cf17b1088"
+    },
+    "postgres": {
+      "image": "library/postgres:17-alpine",
+      "digest": "sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b"
+    },
+    "dockerfile": {
+      "image": "docker/dockerfile:1",
+      "digest": "sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e"
+    }
+  },
+  "tools": {
+    "aquasecurity/trivy": {
+      "version": "v0.76.1",
+      "source": "https://github.com/aquasecurity/trivy/releases/tag/v0.76.1"
+    },
+    "anchore/syft": {
+      "version": "v1.55.0",
+      "source": "https://github.com/anchore/syft/releases/tag/v1.55.0"
+    },
+    "sigstore/cosign": {
+      "version": "v3.1.4",
+      "source": "https://github.com/sigstore/cosign/releases/tag/v3.1.4"
+    },
+    "owasp": {
+      "version": "13.0.0",
+      "source": "https://repo.maven.apache.org/maven2/org/owasp/dependency-check-maven/maven-metadata.xml"
+    },
+    "cyclonedx": {
+      "version": "2.9.3",
+      "source": "https://repo.maven.apache.org/maven2/org/cyclonedx/cyclonedx-maven-plugin/maven-metadata.xml"
+    }
+  }
+}

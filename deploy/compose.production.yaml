@@ -1,0 +1,22 @@
+# A pre-provisioned TLS reverse proxy and managed PostgreSQL service are required.
+# Only the protected deployment script sets NTSUMELE_IMAGE_REF after verification.
+services:
+  bank:
+    image: ${NTSUMELE_IMAGE_REF:?Supply a verified immutable image digest}
+    env_file:
+      - ${NTSUMELE_ENV_FILE:?Supply the protected application environment file}
+    environment:
+      SPRING_PROFILES_ACTIVE: secure
+      DB_SSL_ROOT_CERT: /run/secrets/postgres-root.crt
+    volumes:
+      - ${NTSUMELE_DB_CA_FILE:?Supply the PostgreSQL CA certificate}:/run/secrets/postgres-root.crt:ro
+    ports:
+      - "127.0.0.1:8080:8080"
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 768m
+    restart: unless-stopped

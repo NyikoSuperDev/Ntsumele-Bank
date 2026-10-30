@@ -1,0 +1,49 @@
+services:
+  database:
+    image: postgres:17-alpine@sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ntsumele}
+      POSTGRES_USER: ${POSTGRES_USER:-ntsumele_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      APP_DB_USERNAME: ${DB_USERNAME:-ntsumele}
+      APP_DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/01-application-role.sh:/docker-entrypoint-initdb.d/01-application-role.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    restart: unless-stopped
+  bank:
+    build: .
+    depends_on:
+      database:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: demo
+      # Deliberate local-only exception; production uses verified TLS and the secure profile.
+      DB_URL: jdbc:postgresql://database:5432/${POSTGRES_DB:-ntsumele}?sslmode=disable
+      DB_USERNAME: ${DB_USERNAME:-ntsumele}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 768m
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

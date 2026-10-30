@@ -1,0 +1,42 @@
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { DisputeCaseClient } from './dispute-case-client';
+import { DisputeSubmissionRequest } from './dispute-case';
+describe('Dispute action contracts', () => {
+    let client: DisputeCaseClient;
+    let http: HttpTestingController;
+    const csrf = () => http.expectOne('/api/csrf').flush({ token: 'csrf-value', headerName: 'X-CSRF-TOKEN' });
+    beforeEach(() => { TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] }); client = TestBed.inject(DisputeCaseClient); http = TestBed.inject(HttpTestingController); });
+    afterEach(() => http.verify());
+    it('requests only the selected bounded customer or staff page with server-side filters', async () => {
+        const customer = client.getCustomerCases({ page: 3, size: 10, status: 'ACTIVE' });
+        const customerRequest = http.expectOne(request => request.url === '/api/disputes');
+        expect(customerRequest.request.params.get('page')).toBe('3');
+        expect(customerRequest.request.params.get('size')).toBe('10');
+        expect(customerRequest.request.params.get('status')).toBe('ACTIVE');
+        customerRequest.flush({ content: [], number: 3, size: 10, totalElements: 103, totalPages: 11 });
+        expect((await customer).totalElements).toBe(103);
+        const staff = client.getReviewCases({ page: 1, size: 10, status: 'AWAITING_INFORMATION' });
+        const staffRequest = http.expectOne(request => request.url === '/api/staff/disputes');
+        expect(staffRequest.request.params.get('page')).toBe('1');
+        expect(staffRequest.request.params.get('status')).toBe('AWAITING_INFORMATION');
+        staffRequest.flush({ content: [], number: 1, size: 10, totalElements: 18, totalPages: 2 });
+        await staff;
+    });
+    it('uses aggregate endpoints and loads full case details only from the selected role route', async () => {
+        const customerCounts = client.getCustomerSummary();
+        http.expectOne('/api/disputes/summary').flush({ total: 300, active: 200, awaitingInformation: 20, resolved: 100 });
+        expect((await customerCounts).active).toBe(200);
+        const staffCounts = client.getReviewSummary();
+        http.expectOne('/api/staff/disputes/summary').flush({ total: 900, active: 800, awaitingInformation: 80, resolved: 100 });
+        expect((await staffCounts).total).toBe(900);
+        const selected = client.getReviewCase('case/one');
+        http.expectOne('/api/staff/disputes/case%2Fone').flush({ id: 'case/one', history: [{ id: 'history-1' }] });
+        expect((await selected).history).toHaveLength(1);
+    });
+    it('whitelists claim fields and retains the exact retry key even if an input has extra financial fields', async () => { const claim = { transactionId: 'tx-1001', reason: 'UNRECOGNIZED', description: 'I do not recognise this transaction.', amount: 0.01, owner: 'ben' } as unknown as DisputeSubmissionRequest; const result = client.submitDispute(claim, 'retry-key-123'); csrf(); const request = http.expectOne('/api/disputes'); expect(request.request.headers.get('Idempotency-Key')).toBe('retry-key-123'); expect(request.request.headers.get('X-CSRF-TOKEN')).toBe('csrf-value'); expect(request.request.body).toEqual({ transactionId: claim.transactionId, reason: claim.reason, description: claim.description }); request.flush({ id: 'case-1' }); await result; });
+    it('includes the current case version with requested information', async () => { const result = client.provideInformation('case-1', { message: 'The delivery never arrived.', version: 7 }); csrf(); const request = http.expectOne('/api/disputes/case-1/information'); expect(request.request.body).toEqual({ message: 'The delivery never arrived.', version: 7 }); request.flush({ version: 8 }); await result; });
+    it('keeps staff decisions on their review route and includes the observed version', async () => { const result = client.updateReviewStatus('case-1', { status: 'RESOLVED', note: 'The merchant accepted the dispute.', version: 3 }); csrf(); const request = http.expectOne('/api/staff/disputes/case-1/status'); expect(request.request.body).toEqual({ status: 'RESOLVED', note: 'The merchant accepted the dispute.', version: 3 }); request.flush({ version: 4 }); await result; });
+});

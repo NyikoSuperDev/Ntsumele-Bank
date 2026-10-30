@@ -1,0 +1,75 @@
+spring:
+  application:
+    name: ntsumele-bank
+  profiles:
+    default: demo
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/ntsumele?sslmode=verify-full}
+    username: ${DB_USERNAME:ntsumele}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 5000
+      validation-timeout: 3000
+      transaction-isolation: TRANSACTION_READ_COMMITTED
+      data-source-properties:
+        sslmode: verify-full
+        ApplicationName: ntsumele-bank
+        connectTimeout: 5
+        socketTimeout: 20
+        cancelSignalTimeout: 3
+        tcpKeepAlive: true
+        options: "-c statement_timeout=15000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=15000 -c timezone=UTC"
+  flyway:
+    clean-disabled: true
+    validate-on-migrate: true
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+server:
+  forward-headers-strategy: none
+  port: 8080
+  shutdown: graceful
+  error:
+    include-message: never
+    include-stacktrace: never
+  servlet:
+    session:
+      timeout: 15m
+      cookie:
+        http-only: true
+        same-site: strict
+      tracking-modes: cookie
+  tomcat:
+    connection-timeout: 10s
+    max-http-form-post-size: 16KB
+    max-swallow-size: 16KB
+    threads:
+      max: 100
+  max-http-request-header-size: 16KB
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+logging:
+  level:
+    org.springframework.security: WARN
+    org.springframework.jdbc: WARN
+app:
+  security:
+    require-https: false
+  idempotency:
+    retention: ${IDEMPOTENCY_RETENTION:90d}
+    cleanup:
+      enabled: ${IDEMPOTENCY_CLEANUP_ENABLED:true}
+      batch-size: ${IDEMPOTENCY_CLEANUP_BATCH_SIZE:500}
+      fixed-delay: ${IDEMPOTENCY_CLEANUP_FIXED_DELAY:PT1H}
+      initial-delay: ${IDEMPOTENCY_CLEANUP_INITIAL_DELAY:PT5M}
+  ledger:
+    max-age: 24h

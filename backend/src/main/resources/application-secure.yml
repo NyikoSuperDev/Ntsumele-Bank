@@ -1,0 +1,25 @@
+# Production ingress must replace forwarded headers and connect from explicitly trusted addresses.
+spring:
+  datasource:
+    hikari:
+      data-source-properties:
+        sslmode: verify-full
+        sslrootcert: ${DB_SSL_ROOT_CERT}
+server:
+  forward-headers-strategy: native
+  tomcat:
+    redirect-context-root: false
+    remoteip:
+      internal-proxies: ${TRUSTED_PROXY_REGEX:}
+      trusted-proxies: ''
+      remote-ip-header: X-Forwarded-For
+      protocol-header: X-Forwarded-Proto
+      protocol-header-https-value: https
+  servlet:
+    session:
+      cookie:
+        secure: true
+app:
+  security:
+    require-https: true
+    public-origin: ${PUBLIC_ORIGIN:}

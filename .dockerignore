@@ -1,0 +1,21 @@
+**/node_modules
+**/target
+**/dist
+**/.angular
+**/data
+**/*.log
+.git
+.env
+.env.*
+!.env.example
+**/__pycache__
+*.pyc
+*.key
+*.p12
+*.pfx
+*.zip
+
+# Database backups and local secrets
+*.dump
+*.backup
+backups/
